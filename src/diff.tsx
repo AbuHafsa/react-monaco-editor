@@ -18,6 +18,7 @@ class MonacoDiffEditor extends React.Component<MonacoDiffEditorProps> {
     editorDidMount: PropTypes.func,
     editorWillMount: PropTypes.func,
     onChange: PropTypes.func,
+    className: PropTypes.string,
   };
 
   static defaultProps = {
@@ -33,6 +34,7 @@ class MonacoDiffEditor extends React.Component<MonacoDiffEditorProps> {
     editorDidMount: noop,
     editorWillMount: noop,
     onChange: noop,
+    className: null,
   };
 
   editor?: monaco.editor.IStandaloneDiffEditor;
@@ -53,7 +55,7 @@ class MonacoDiffEditor extends React.Component<MonacoDiffEditorProps> {
   }
 
   componentDidUpdate(prevProps: MonacoDiffEditorProps) {
-    const { language, theme, height, options, width } = this.props;
+    const { language, theme, height, options, width, className } = this.props;
 
     const { original, modified } = this.editor.getModel();
 
@@ -64,8 +66,7 @@ class MonacoDiffEditor extends React.Component<MonacoDiffEditorProps> {
     if (this.props.value != null && this.props.value !== modified.getValue()) {
       this.__prevent_trigger_change_event = true;
       // modifiedEditor is not in the public API for diff editors
-      // @ts-expect-error
-      this.editor.modifiedEditor.pushUndoStop();
+      this.editor.getModifiedEditor().pushUndoStop();
       // pushEditOperations says it expects a cursorComputer, but doesn't seem to need one.
       // @ts-expect-error
       modified.pushEditOperations(
@@ -78,8 +79,7 @@ class MonacoDiffEditor extends React.Component<MonacoDiffEditorProps> {
         ]
       );
       // modifiedEditor is not in the public API for diff editors
-      // @ts-expect-error
-      this.editor.modifiedEditor.pushUndoStop();
+      this.editor.getModifiedEditor().pushUndoStop();
       this.__prevent_trigger_change_event = false;
     }
 
@@ -97,7 +97,10 @@ class MonacoDiffEditor extends React.Component<MonacoDiffEditorProps> {
       this.editor.layout();
     }
     if (prevProps.options !== options) {
-      this.editor.updateOptions(options);
+      this.editor.updateOptions({
+        ...(className ? { extraEditorClassName: className } : {}),
+        ...options,
+      });
     }
   }
 
@@ -139,13 +142,20 @@ class MonacoDiffEditor extends React.Component<MonacoDiffEditorProps> {
   initMonaco() {
     const value =
       this.props.value != null ? this.props.value : this.props.defaultValue;
-    const { original, theme, options, overrideServices } = this.props;
+    const {
+      original,
+      theme,
+      options,
+      overrideServices,
+      className,
+    } = this.props;
     if (this.containerElement) {
       // Before initializing monaco editor
       this.editorWillMount();
       this.editor = monaco.editor.createDiffEditor(
         this.containerElement,
         {
+          ...(className ? { extraEditorClassName: className } : {}),
           ...options,
           ...(theme ? { theme } : {}),
         },
